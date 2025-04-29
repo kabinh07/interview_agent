@@ -16,3 +16,4 @@ class AnswerData(TypedDict):
 class MessageState(TypedDict): 
     cv_data: CVData
     questions: QuestionData
+    answers: AnswerData

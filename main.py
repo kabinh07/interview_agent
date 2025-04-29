@@ -10,12 +10,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 builder = StateGraph(MessageState)
-interviewer = Interviewer("smollm:135m", 0.0) 
+interviewer = Interviewer("llama3.2:1b", 0.0) 
 
 builder.add_node("keyword_fetcher", interviewer.fetch_keyword)
+builder.add_node("question_generator", interviewer.ask_question)
 
 builder.add_edge(START, "keyword_fetcher")
-builder.add_edge("keyword_fetcher", END)
+builder.add_edge("keyword_fetcher", "question_generator")
+builder.add_edge("question_generator", END)
 
 graph = builder.compile()
 
