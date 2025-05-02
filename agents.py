@@ -124,12 +124,24 @@ class Interviewer:
         interview_question = state["questions"].get("generated_questions")[current_index]
         candidate_response = state.get("answers").get("candidate_answers")[-1]
         prompt = """
-        You are a question and answer classifier.
+        You are a strict classifier that decides whether a candidate's input is a quesiton or an answer to a given interview question.
 
-        Determine whether the input below is a clarification question or a direct answer to the following interview question.
         ### Instructions:
-        - The output should one worded. Either "clarification" or "answer".
-        - Don't explain anything.
+        - Output **only one word**: either `clarification` or `answer`.
+
+        ### Examples:
+        Interview Question: What is a Python dictionary?
+        Candidate Input: What do you mean by dictionary?
+        Output: question
+
+        Interview Question: What is a Python dictionary?
+        Candidate Input: It's used to store key-value pairs.
+        Output: answer
+
+        ### Rules:
+        - Provide only a single word (e.g: question, answer)
+        - No explaination
+        ---
 
         Interview Question:
         {interview_question}
@@ -138,11 +150,12 @@ class Interviewer:
         {user_input}
 
         Output:
+
         """
         final_prompt = prompt.format(interview_question = interview_question, user_input = candidate_response)
         response = self.model.invoke(final_prompt).content
         print(response)
-        return "confusion" if "clarification" in response else "next"
+        return "confusion" if "question" == response else "next"
     
     def clarification_node(self, state: MessageState) -> MessageState:
         current_index = state.get("current_index") - 1
