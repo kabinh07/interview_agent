@@ -5,54 +5,13 @@ from state import MessageState
 import random
 
 class Interviewer:
-    def __init__(self, model_name: str, temperature: float):
+    def __init__(self, model_name: str, temperature: float, prompts: dict):
         self.model = ChatOllama(model=model_name, temperature=temperature)
+        self.prompts = prompts
 
     def fetch_keyword(self, state: MessageState) -> MessageState:
         input_text = state.get("cv_data").get("text")
-        prompt = PromptTemplate.from_template(
-            """
-            You are an information extractor that strictly identifies **only programming language names** from a text describing a person’s skills.
-
-            ⚠️ Your task is to exclude any **spoken languages** (like English, Bangla, French, etc.) even if they appear alongside programming terms.
-
-            ### Objective:
-            Extract and return a comma-separated list of **only** programming language names found in the text. **Do not include any other text**. If none are found, return an empty string.
-
-            ### ✅ Examples (Valid Extraction):
-            Text: I love doing codes in python and c++.
-            Output: Python, C++
-
-            Text: I have experience in Java, Kotlin, and some scripting in Bash.
-            Output: Java, Kotlin, Bash
-
-            Text: Skilled in Rust and JavaScript.
-            Output: Rust, JavaScript
-
-            ### ❌ Examples (Ignore spoken languages):
-            Text: I always speak in English.
-            Output: 
-
-            Text: Fluent in Bangla and Hindi.
-            Output: 
-
-            Text: I know Python, but I also speak Bengali.
-            Output: Python
-
-            ### Rules:
-            - Only include valid programming languages.
-            - Do **not** include any human or spoken languages.
-            - The output must be a single line.
-            - Capitalize each programming language's name correctly.
-            - If no programming languages are found, return an empty string (just a blank line).
-            - Do not add any language that is not mentioned in the input.
-
-            ### Input:
-            {text}
-
-            ### Output:
-            """
-        )
+        prompt = PromptTemplate.from_template(self.prompts.get("fetch_keyword"))
         final_prompt = prompt.format(text= input_text)
         response = self.model.invoke(final_prompt).content.split('Output:')[-1].strip().split(',')
         keywords = [text.strip() for text in response]
@@ -61,34 +20,7 @@ class Interviewer:
 
     def generate_question(self, state: MessageState) -> MessageState:
         keywords = state.get("cv_data").get("keywords")
-        prompt = PromptTemplate.from_template(
-        """
-        You are a technical interviewer assistant.
-
-        Your job is to generate **exactly 3 technical questions** per programming language listed below.
-
-        ### Instructions:
-        - Only use the programming language provided as input below.
-        - For **each language**, output exactly 3 questions.
-        - Questions should range in difficulty: 1 basic, 1 intermediate, 1 advanced.
-        - Do not include any commentary or extra formatting — only the questions.
-        - Do not include any bullet points or numeric points. The questions must be basic strings.
-        - Do not include the language name in output segment.
-        - Do not provide any answers.
-        - Do not provide any choices.
-
-        ### Programming Language:
-        {language}
-
-        ### Output Format (strict):
-        Output:
-        <qeustion 1><break line>
-        <qeustion 2><break line>
-        ...
-
-        Output:
-        """
-        )
+        prompt = PromptTemplate.from_template(self.prompts.get("generate_question"))
         all_questions = []
         for keyword in keywords:
             final_prompt = prompt.format(language= [keyword])
@@ -118,40 +50,11 @@ class Interviewer:
     
     def decider_node(self, state: MessageState):
         if state.get("current_index") >= len(state.get("questions").get("generated_questions")):
-            print("ENDDDDDDDDDD")
             return "end"
         current_index = state.get("current_index")
         interview_question = state["questions"].get("generated_questions")[current_index]
         candidate_response = state.get("answers").get("candidate_answers")[-1]
-        prompt = """
-        You are a strict classifier that decides whether a candidate's input is a quesiton or an answer to a given interview question.
-
-        ### Instructions:
-        - Output **only one word**: either `clarification` or `answer`.
-
-        ### Examples:
-        Interview Question: What is a Python dictionary?
-        Candidate Input: What do you mean by dictionary?
-        Output: question
-
-        Interview Question: What is a Python dictionary?
-        Candidate Input: It's used to store key-value pairs.
-        Output: answer
-
-        ### Rules:
-        - Provide only a single word (e.g: question, answer)
-        - No explaination
-        ---
-
-        Interview Question:
-        {interview_question}
-
-        Candidate Input:
-        {user_input}
-
-        Output:
-
-        """
+        prompt = PromptTemplate.from_template(self.prompts.get("decider_node"))
         final_prompt = prompt.format(interview_question = interview_question, user_input = candidate_response)
         response = self.model.invoke(final_prompt).content
         print(response)
@@ -163,23 +66,7 @@ class Interviewer:
         candidate_question = state.get("answers").get("candidate_answers").pop()
         state["questions"]["candidate_questions"] = candidate_question
         history = []
-
-        prompt = """
-        You are a interviewer
-
-        A question was asked to a candidate, Now you have to clear the confusion. The asked question and the confusion is given below
-
-        ### Instructions:
-        - Clear the confusion but don't answer the question.
-
-        Question:
-        {quesiton}
-
-        Confusion:
-        {confusion}
-
-        Answer:
-        """
+        prompt = PromptTemplate.from_template(self.prompts.get("clarification_node"))
         final_prompt = prompt.format(quesiton=question, confusion=candidate_question)
         thinking_message = AIMessage(content="Thinking...")
         thinking_message.pretty_print()
