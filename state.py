@@ -7,10 +7,10 @@ class CVData(TypedDict):
 
 class QuestionData(TypedDict):
     generated_questions : List[str]
-    candidate_questions : List[str]
+    candidate_questions : Annotated[List[str], operator.add]
 
 class AnswerData(TypedDict):
-    candidate_answers: List[str]
+    candidate_answers: Annotated[List[str], operator.add]
 
 class MessageState(TypedDict): 
     cv_data: CVData

@@ -7,27 +7,34 @@ import io
 from dotenv import load_dotenv
 load_dotenv()
 
-def exit_condition(state: MessageState) -> bool:
-    return state.get("current_index") >= len(state.get("questions").get("generated_questions"))
-
 builder = StateGraph(MessageState)
 interviewer = Interviewer("llama3.2:1b", 0.0) 
 
 builder.add_node("keyword_fetcher", interviewer.fetch_keyword)
 builder.add_node("question_generator", interviewer.generate_question)
 builder.add_node("question_asker", interviewer.ask_questions)
+builder.add_node("explainer", interviewer.clarification_node)
 
 builder.add_edge(START, "keyword_fetcher")
-builder.add_edge("keyword_fetcher", END)
+builder.add_edge("keyword_fetcher", "question_generator")
 builder.add_edge("question_generator", "question_asker")
 builder.add_conditional_edges(
     "question_asker",
-    exit_condition,
+    interviewer.decider_node,
     {
-        False: "question_asker",
-        True: END
+        "next": "question_asker",
+        "confusion": "explainer",
+        "end": END
     }
-
+)
+builder.add_conditional_edges(
+    "explainer",
+    interviewer.decider_node,
+    {
+        "next": "question_asker",
+        "confusion": "explainer",
+        "end": END
+    }
 )
 
 graph = builder.compile()

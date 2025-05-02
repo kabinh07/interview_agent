@@ -73,24 +73,27 @@ class Interviewer:
         - Questions should range in difficulty: 1 basic, 1 intermediate, 1 advanced.
         - Do not include any commentary or extra formatting — only the questions.
         - Do not include any bullet points or numeric points. The questions must be basic strings.
+        - Do not include the language name in output segment.
+        - Do not provide any answers.
+        - Do not provide any choices.
 
         ### Programming Language:
         {language}
 
         ### Output Format (strict):
-        Questions:
+        Output:
         <qeustion 1><break line>
         <qeustion 2><break line>
         ...
 
-        ### Begin Output:
+        Output:
         """
         )
         all_questions = []
         for keyword in keywords:
             final_prompt = prompt.format(language= [keyword])
             response = self.model.invoke(final_prompt).content.split('Questions:')[-1].strip().split('\n')
-            questions = [text.strip() for text in response]
+            questions = [text.strip() for text in response if not text.strip() == "" and "?" in text.strip()]
             all_questions.extend(questions)
         state["questions"]["generated_questions"] = all_questions
         return state
@@ -100,22 +103,33 @@ class Interviewer:
         interview_question = state["questions"].get("generated_questions")[current_index]
         ai_message = AIMessage(content=interview_question)
         history = []
-        print(ai_message.pretty_print())
+        ai_message.pretty_print()
         history.append(ai_message)
+        temp_human_message = HumanMessage(content="")
+        temp_human_message.pretty_print()
         input_message = input()
         human_message = HumanMessage(content=input_message)
         history.append(human_message)
         state["chat_history"] = history
         current_index += 1
         state["current_index"] = current_index
+        state["answers"]["candidate_answers"] = [input_message]
         return state
     
     def decider_node(self, state: MessageState):
+        if state.get("current_index") >= len(state.get("questions").get("generated_questions")):
+            print("ENDDDDDDDDDD")
+            return "end"
         current_index = state.get("current_index")
         interview_question = state["questions"].get("generated_questions")[current_index]
-        candidate_response = state.get("questions").get("candidate_questions")[-1]
+        candidate_response = state.get("answers").get("candidate_answers")[-1]
         prompt = """
+        You are a question and answer classifier.
+
         Determine whether the input below is a clarification question or a direct answer to the following interview question.
+        ### Instructions:
+        - The output should one worded. Either "clarification" or "answer".
+        - Don't explain anything.
 
         Interview Question:
         {interview_question}
@@ -123,10 +137,49 @@ class Interviewer:
         Candidate Input:
         {user_input}
 
-        Output only one word: "clarification" or "answer".
+        Output:
         """
         final_prompt = prompt.format(interview_question = interview_question, user_input = candidate_response)
-        response = self.model.invoke(final_prompt)
+        response = self.model.invoke(final_prompt).content
         print(response)
-        return
+        return "confusion" if "clarification" in response else "next"
+    
+    def clarification_node(self, state: MessageState) -> MessageState:
+        current_index = state.get("current_index") - 1
+        question = state.get("questions").get("generated_questions")[current_index]
+        candidate_question = state.get("answers").get("candidate_answers").pop()
+        state["questions"]["candidate_questions"] = candidate_question
+        history = []
+
+        prompt = """
+        You are a interviewer
+
+        A question was asked to a candidate, Now you have to clear the confusion. The asked question and the confusion is given below
+
+        ### Instructions:
+        - Clear the confusion but don't answer the question.
+
+        Question:
+        {quesiton}
+
+        Confusion:
+        {confusion}
+
+        Answer:
+        """
+        final_prompt = prompt.format(quesiton=question, confusion=candidate_question)
+        thinking_message = AIMessage(content="Thinking...")
+        thinking_message.pretty_print()
+        response = self.model.invoke(final_prompt).content
+        ai_message = AIMessage(content=response)
+        ai_message.pretty_print()
+        history.append(ai_message)
+        temp_human_message = HumanMessage(content="")
+        temp_human_message.pretty_print()
+        input_message = input()
+        human_message = HumanMessage(content=input_message)
+        history.append(human_message)
+        state["chat_history"] = history
+        state["answers"]["candidate_answers"] = [input_message]
+        return state
     
