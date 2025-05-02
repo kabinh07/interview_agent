@@ -55,13 +55,11 @@ class Interviewer:
         final_prompt = prompt.format(text= input_text)
         response = self.model.invoke(final_prompt).content.split('Output:')[-1].strip().split(',')
         keywords = [text.strip() for text in response]
-        print(keywords)
         state["cv_data"]["keywords"] = keywords
         return state
 
-    def ask_question(self, state: MessageState) -> MessageState:
+    def generate_question(self, state: MessageState) -> MessageState:
         keywords = state.get("cv_data").get("keywords")
-        keyword = random.choice(keywords)
         prompt = PromptTemplate.from_template(
         """
         You are a technical interviewer assistant.
@@ -87,9 +85,11 @@ class Interviewer:
         ### Begin Output:
         """
         )
-        final_prompt = prompt.format(language= [keyword])
-        response = self.model.invoke(final_prompt).content.split('Questions:')[-1].strip().split('\n')
-        questions = [text.strip() for text in response]
-        state["questions"]["generated_questions"] = questions
-        print(questions)
+        all_questions = []
+        for keyword in keywords:
+            final_prompt = prompt.format(language= [keyword])
+            response = self.model.invoke(final_prompt).content.split('Questions:')[-1].strip().split('\n')
+            questions = [text.strip() for text in response]
+            all_questions.extend(questions)
+        state["questions"]["generated_questions"] = all_questions
         return state

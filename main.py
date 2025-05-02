@@ -1,11 +1,9 @@
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 from state import MessageState
 from agents import Interviewer
 from PIL import Image
 import io
-import os 
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -13,7 +11,7 @@ builder = StateGraph(MessageState)
 interviewer = Interviewer("llama3.2:1b", 0.0) 
 
 builder.add_node("keyword_fetcher", interviewer.fetch_keyword)
-builder.add_node("question_generator", interviewer.ask_question)
+builder.add_node("question_generator", interviewer.generate_question)
 
 builder.add_edge(START, "keyword_fetcher")
 builder.add_edge("keyword_fetcher", "question_generator")
