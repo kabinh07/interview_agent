@@ -1,5 +1,6 @@
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import AIMessage, HumanMessage
 from state import MessageState
 import random
 
@@ -93,3 +94,39 @@ class Interviewer:
             all_questions.extend(questions)
         state["questions"]["generated_questions"] = all_questions
         return state
+
+    def ask_questions(self, state: MessageState) -> MessageState:
+        current_index = state.get("current_index")
+        interview_question = state["questions"].get("generated_questions")[current_index]
+        ai_message = AIMessage(content=interview_question)
+        history = []
+        print(ai_message.pretty_print())
+        history.append(ai_message)
+        input_message = input()
+        human_message = HumanMessage(content=input_message)
+        history.append(human_message)
+        state["chat_history"] = history
+        current_index += 1
+        state["current_index"] = current_index
+        return state
+    
+    def decider_node(self, state: MessageState):
+        current_index = state.get("current_index")
+        interview_question = state["questions"].get("generated_questions")[current_index]
+        candidate_response = state.get("questions").get("candidate_questions")[-1]
+        prompt = """
+        Determine whether the input below is a clarification question or a direct answer to the following interview question.
+
+        Interview Question:
+        {interview_question}
+
+        Candidate Input:
+        {user_input}
+
+        Output only one word: "clarification" or "answer".
+        """
+        final_prompt = prompt.format(interview_question = interview_question, user_input = candidate_response)
+        response = self.model.invoke(final_prompt)
+        print(response)
+        return
+    

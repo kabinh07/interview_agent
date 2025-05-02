@@ -1,5 +1,4 @@
-from typing import TypedDict, Annotated, List, Optional
-from dataclasses import dataclass
+from typing import TypedDict, Annotated, List
 import operator
 
 class CVData(TypedDict):
@@ -17,3 +16,5 @@ class MessageState(TypedDict):
     cv_data: CVData
     questions: QuestionData
     answers: AnswerData
+    current_index : int = 0
+    chat_history : Annotated[List, operator.add] = []
