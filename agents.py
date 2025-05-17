@@ -2,7 +2,6 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage
 from state import MessageState
-import random
 
 class Interviewer:
     def __init__(self, model_name: str, temperature: float, prompts: dict):

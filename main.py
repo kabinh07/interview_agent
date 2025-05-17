@@ -65,8 +65,8 @@ if __name__ == "__main__":
     )
 
     graph = builder.compile()
-    # bytes = graph.get_graph().draw_mermaid_png()
-    # image = Image.open(io.BytesIO(bytes))
-    # image.save("graph.png")
+    png_bytes = graph.get_graph().draw_mermaid_png()
+    image = Image.open(io.BytesIO(png_bytes))
+    image.save("graph.png")
     reponse = graph.invoke(message)
     print(reponse)
