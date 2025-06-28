@@ -3,3 +3,4 @@ __pycache__
 graph.png
 .env
 prompts/*.txt
+.idea
