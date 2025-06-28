@@ -9,7 +9,7 @@ load_dotenv()
 
 message = MessageState(
         cv_data= {
-            "text": "I am working as an AI/ML engineer. I prefer working with python, java, SQL and fluent in Bangla, and English languages",
+            "text": "I am working as an AI/ML engineer. I prefer working with python, java, SQL and fluent in Bangla, and English languages. I am experience in Software Engineering too.",
             "keywords": []
         },
         questions= {
@@ -35,7 +35,7 @@ with open("prompts/generate_question.txt", "r") as f:
 
 if __name__ == "__main__":
     builder = StateGraph(MessageState)
-    interviewer = Interviewer("llama3.2:1b", 0.0, prompts) 
+    interviewer = Interviewer("qwen3:14b", 0.0, prompts) 
 
     builder.add_node("keyword_fetcher", interviewer.fetch_keyword)
     builder.add_node("question_generator", interviewer.generate_question)

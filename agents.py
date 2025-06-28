@@ -5,16 +5,17 @@ from state import MessageState
 
 class Interviewer:
     def __init__(self, model_name: str, temperature: float, prompts: dict):
-        self.model = ChatOllama(model=model_name, temperature=temperature)
+        self.model = ChatOllama(model=model_name, temperature=temperature, base_url="http://192.168.12.41:11434")
         self.prompts = prompts
 
     def fetch_keyword(self, state: MessageState) -> MessageState:
         input_text = state.get("cv_data").get("text")
         prompt = PromptTemplate.from_template(self.prompts.get("fetch_keyword"))
         final_prompt = prompt.format(text= input_text)
-        response = self.model.invoke(final_prompt).content.split('Output:')[-1].strip().split(',')
+        response = self.model.invoke(final_prompt).content.split("</think>")[-1].split(' ')
         keywords = [text.strip() for text in response]
         state["cv_data"]["keywords"] = keywords
+        print(state)
         return state
 
     def generate_question(self, state: MessageState) -> MessageState:
@@ -23,15 +24,19 @@ class Interviewer:
         all_questions = []
         for keyword in keywords:
             final_prompt = prompt.format(language= [keyword])
-            response = self.model.invoke(final_prompt).content.split('Questions:')[-1].strip().split('\n')
-            questions = [text.strip() for text in response if not text.strip() == "" and "?" in text.strip()]
+            response = self.model.invoke(final_prompt).content.split("</think>")[-1].strip().split('Questions:')[-1].strip().split('\n')
+            print(f">>> Response for generate question: {response}")
+            questions = [text.strip() for text in response if not text.strip() == ""]
             all_questions.extend(questions)
         state["questions"]["generated_questions"] = all_questions
+        print(state)
         return state
 
     def ask_questions(self, state: MessageState) -> MessageState:
         current_index = state.get("current_index")
+        print(f"\n>>>>>>>>>>> Current Index: {current_index}\n")
         interview_question = state["questions"].get("generated_questions")[current_index]
+        print(f"\n>>>>>>>>>>> Total questions: {len(state["questions"].get("generated_questions"))}\n")
         ai_message = AIMessage(content=interview_question)
         history = []
         ai_message.pretty_print()
@@ -45,6 +50,7 @@ class Interviewer:
         current_index += 1
         state["current_index"] = current_index
         state["answers"]["candidate_answers"] = [input_message]
+        print(state)
         return state
     
     def decider_node(self, state: MessageState):
@@ -55,7 +61,7 @@ class Interviewer:
         candidate_response = state.get("answers").get("candidate_answers")[-1]
         prompt = PromptTemplate.from_template(self.prompts.get("decider_node"))
         final_prompt = prompt.format(interview_question = interview_question, user_input = candidate_response)
-        response = self.model.invoke(final_prompt).content
+        response = self.model.invoke(final_prompt).content.split("</think>")[-1]
         print(response)
         return "confusion" if "question" == response else "next"
     
@@ -69,7 +75,7 @@ class Interviewer:
         final_prompt = prompt.format(quesiton=question, confusion=candidate_question)
         thinking_message = AIMessage(content="Thinking...")
         thinking_message.pretty_print()
-        response = self.model.invoke(final_prompt).content
+        response = self.model.invoke(final_prompt).content.split("</think>")[-1]
         ai_message = AIMessage(content=response)
         ai_message.pretty_print()
         history.append(ai_message)
